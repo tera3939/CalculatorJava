@@ -1,0 +1,112 @@
+PARSER_BEGIN(CalcParser)
+package Parser;
+
+import java.io.*;
+import DataStructure.IBinTree;
+import ExprNode.*;
+
+public class CalcParser {
+    public static IBinTree<Evaluable> parse(String expression) throws ParseException {
+        final CalcParser parser = new CalcParser(new StringReader(expression));
+        return parser.start();
+    }
+}
+PARSER_END(CalcParser)
+SKIP: {
+  " "
+ | "\t"
+ | "\n"
+ | "\r"
+}
+TOKEN: {
+    <INTEGER: (["0"-"9"])+>
+    | <POINT: ".">
+    | <FLOAT: (["0"-"9"])+ <POINT> (["0"-"9"])*
+              | <POINT> (["0"-"9"])+>
+    | <EXPR_OP: "+" | "-">
+    | <TERM_OP: "*" | "/" | "%">
+    | <UNARY_OP: "+" | "-">
+    | <LPAREN: "(">
+    | <RPAREN: ")">
+}
+
+private IBinTree<Evaluable> start() :
+{
+    IBinTree<Evaluable> res;
+}
+{
+    res = expr() <EOF>{
+        return res;
+    }
+}
+
+private IBinTree<Evaluable> expr() :
+{
+    Token op;
+    IBinTree<Evaluable> v1, v2, res;
+}
+{
+    v1 = term() {
+        res = v1;
+    }
+    ( op = <EXPR_OP> v2 = term() {
+        res = new Expr(op.image, v1, v2);
+        v1 = res;
+    })*
+    {
+        return res;
+    }
+}
+
+private IBinTree<Evaluable> term() :
+{
+    Token op;
+    IBinTree<Evaluable> v1, v2, res;
+}
+{
+    v1 = unary() {
+        res = v1;
+    }
+    ( op = <TERM_OP> v2 = unary() {
+        res = new Term(op.image, v1, v2);
+        v1 = res;
+    } )*
+    {
+        return res;
+    }
+}
+
+private IBinTree<Evaluable> unary() :
+{
+    Token op;
+    IBinTree<Evaluable> v, res;
+}
+{
+    op = <EXPR_OP> v = unary() {
+        res = new Unary(op.image, v);
+        return res;
+    }
+|
+    v = factor() {
+        return v;
+    }
+}
+
+private IBinTree<Evaluable> factor() :
+{
+    Token t;
+    IBinTree<Evaluable> n;
+}
+{
+    t = <INTEGER>{
+        return new Num(Integer.parseInt(t.image));
+    }
+|
+    t = <FLOAT>{
+        return new Floating(Double.parseDouble(t.image));
+    }
+|
+    "(" n=expr() ")" {
+        return n;
+    }
+}
